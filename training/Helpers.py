@@ -37,5 +37,15 @@ def Test_model(model):
     test_id = pd.read_csv('../data/datasets/test/test_id.csv')
     df = df.loc[df.index.isin(test_id)]
     
-    model.predict()
-
+    df = Preprocessing(df)
+    model.predict(df)
+    
+def metrics(pred,true):
+    from sklearn.metrics import accuracy_score,balanced_accuracy_score,recall_score,balanced_accuracy_score
+    metrics = [accuracy_score,balanced_accuracy_score,recall_score,balanced_accuracy_score]
+    result = {}
+    for metric in metrics:
+        result[metric.__name__] = metric(true,pred)
+    return result    
+    
+print(metrics([1,0,0],[1,1,0]))
