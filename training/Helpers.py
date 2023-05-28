@@ -16,9 +16,10 @@ def Preprocessing(data):
     # _ = sc.transform(data.orig_destination_distance.values.reshape(-1,1))
     # data['orig_destination_distance'] = _ 
     
-    x = data.drop(columns=['hotel_cluster'])
+    
     destinations = pd.read_csv('../data/original_data/destinations.csv')
-    x = x.join(destinations,on='srch_destination_id',how='inner',rsuffix='_right').drop(columns=['srch_destination_id_right','srch_destination_id'])
+    data = data.join(destinations,on='srch_destination_id',how='inner',rsuffix='_right').drop(columns=['srch_destination_id_right','srch_destination_id'])
+    x = data.drop(columns=['hotel_cluster'])
     y = data.hotel_cluster
     return x,y
     
