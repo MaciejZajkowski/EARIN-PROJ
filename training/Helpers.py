@@ -32,8 +32,8 @@ def Take_data(sample_size = 10000,df=None):
     #reading train data
     if isinstance(df,type(None)):
         df = pd.read_csv('../data/original_data/train.csv')
-        test_id = pd.read_csv('../data/datasets/test/test_id.csv')
-        df = df.loc[~df.index.isin(test_id)]
+       # test_id = pd.read_csv('../data/datasets/test/test_id.csv')
+        #df = df.loc[~df.index.isin(test_id)]
     
     #sampling or reading previosusly sampled data
     if f'sample_{str(sample_size)}.csv' in os.listdir('../data/datasets/train'):
