@@ -2,6 +2,12 @@ import pandas as pd
 import os
 from sklearn.preprocessing import StandardScaler
 from joblib import load
+import tensorflow as tf
+from tensorflow.keras import regularizers
+from sklearn.model_selection import train_test_split
+import sys
+import numpy as np
+import random
 
 def Preprocessing(data):
     data.drop(columns=['user_id'],inplace=True) 
@@ -70,3 +76,69 @@ def metrics(pred,true):
     return result 
     
 #print(metrics([1,0,0],[1,1,0]))
+
+def make_model_nn(params:dict):
+    kernel_regularizer = regularizers.l2(1e-5)
+    bias_regularizer = regularizers.l2(1e-5)
+    model = tf.keras.Sequential()
+    tf.keras.layers.Input(173),
+    for key in params:
+        if 'dense' in key:
+            model.add(tf.keras.layers.Dense(params[key], activation = 'relu',
+                          kernel_regularizer=kernel_regularizer,
+                          bias_regularizer=bias_regularizer))
+            
+            if 'bn' in params.keys() and params['bn'] ==1:
+                model.add(tf.keras.layers.BatchNormalization())
+        if 'drop' in key and params[key] != 0:
+            model.add(tf.keras.layers.Dropout(params[key]))
+        else:
+            pass
+    model.add(tf.keras.layers.Dense(100, activation = 'softmax'))
+    model.compile(optimizer=tf.keras.optimizers.Adam(), loss=tf.keras.losses.SparseCategoricalCrossentropy(), metrics=['accuracy'])
+    return model
+
+def load_nn_data(sample,val_frac = 0.3):
+    X=  pd.read_pickle('../data/datasets/train/nn/X_train.pkl')
+    y = pd.read_pickle('../data/datasets/train/nn/y_train.pkl')
+    if sample < len(X):
+        _ = y.to_frame().groupby('hotel_cluster').apply(lambda x: x.sample(frac=(sample/len(y)))).droplevel(level=0)
+        X = X.loc[X.index.isin(_.index)]
+        y = _.values
+    return train_test_split(X,y, test_size=val_frac)
+
+
+def take_params(posibilities,num=None,proc=None):
+    n_dict_list = []
+    for iteration, k in enumerate(posibilities):
+        if iteration == 0:
+            for val in posibilities[k]:
+                n_dict ={k:val}
+                n_dict_list.append(n_dict)
+        else:
+            temp = []
+            for val in posibilities[k]:
+                n_dict_list_cpy = n_dict_list.copy()
+                for ndict in n_dict_list:
+                    _ = ndict.copy()
+                    _[k] = val
+                    n_dict_list_cpy.append(_)
+                temp = temp + n_dict_list_cpy
+            n_dict_list = [ x for x in temp if len(x) == iteration+1]
+    if proc is not None:
+        if proc > 1 or proc < 0:
+            return n_dict_list
+        num = int(proc * len(n_dict_list))        
+    
+    if num is not None:
+        return random.sample(n_dict_list,num)
+    else:
+        return n_dict_list
+    
+def test_nn_model(model):
+    X=  pd.read_pickle('../data/datasets/train/nn/X_test.pkl')
+    y = pd.read_pickle('../data/datasets/train/nn/y_test.pkl')
+    pred = model.predict(X,verbose = 0)
+    pred = np.argmax(pred,axis =1)
+    return metrics(pred,y)
+            
