@@ -8,6 +8,8 @@ from sklearn.model_selection import train_test_split
 import sys
 import numpy as np
 import random
+import pathlib
+from tensorflow.keras import layers
 
 def Preprocessing(data):
     data.drop(columns=['user_id'],inplace=True) 
@@ -141,4 +143,50 @@ def test_nn_model(model):
     pred = model.predict(X,verbose = 0)
     pred = np.argmax(pred,axis =1)
     return metrics(pred,y)
+
+def test_cv_model(model):
+    print('tutaj')
+    desktop = pathlib.Path('../../pics_test/')
+    ids = [ int(x.name.split('_')[1]) for x in  list(desktop.rglob("*.png"))]
+    y = pd.read_pickle('../data/datasets/train/coding_pic.pkl')
+    y = y.loc[y.index.isin(ids)]
+    test_ds = tf.keras.preprocessing.image_dataset_from_directory('../../pics_test/', image_size=(30,30),batch_size=128)
+    pred = model.predict(test_ds,verbose = 0)
+    pred = np.argmax(pred,axis =1)
+    return metrics(pred,y)
+
+def load_cv_data(sample,proc=0.3):
+    if sample > 20000:
+        train_ds,val_ds = tf.keras.preprocessing.image_dataset_from_directory('../../pics_dataset/' , image_size=(30,30),batch_size=128,validation_split = proc,subset = 'both',seed = 42)
+    else:
+        train_ds,val_ds = tf.keras.preprocessing.image_dataset_from_directory(f'../../pics_sample_{sample}/' , image_size=(30,30),batch_size=128,validation_split = proc,subset = 'both',seed = 42)
+    return train_ds,val_ds
             
+def make_model_cv(params):
+    model = tf.keras.models.Sequential([
+    layers.Rescaling(1./255),
+    layers.Conv2D(5, 3, padding='same', activation='relu'),
+    layers.MaxPooling2D(),
+    layers.Conv2D(10, 3, padding='same', activation='relu'),
+    layers.MaxPooling2D(),
+    layers.Conv2D(64, 3, padding='same', activation='relu'),
+    layers.MaxPooling2D(),
+    layers.Flatten()])
+    
+    kernel_regularizer = regularizers.l2(1e-5)
+    bias_regularizer = regularizers.l2(1e-5)
+    for key in params:
+        if 'dense' in key:
+            model.add(tf.keras.layers.Dense(params[key], activation = 'relu',
+                          kernel_regularizer=kernel_regularizer,
+                          bias_regularizer=bias_regularizer))
+            
+            if 'bn' in params.keys() and params['bn'] ==1:
+                model.add(tf.keras.layers.BatchNormalization())
+        if 'drop' in key and params[key] != 0:
+            model.add(tf.keras.layers.Dropout(params[key]))
+        else:
+            pass
+    model.add(tf.keras.layers.Dense(100, activation = 'softmax'))
+    model.compile(optimizer=tf.keras.optimizers.Adam(), loss=tf.keras.losses.SparseCategoricalCrossentropy(), metrics=['accuracy'])
+    return model
